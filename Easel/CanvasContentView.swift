@@ -3,6 +3,7 @@
 //  Easel
 //
 
+import AppKit
 import EaselChat
 import EaselKit
 import EaselServerManager
@@ -27,6 +28,10 @@ struct CanvasContentView: View {
   @State private var panelLayoutState: CanvasPanelLayoutState = .allPanels
   @State private var isDesignSystemSetupPresented = false
   @State private var isDesignSystemBrowserPresented = false
+  @State private var quickSitesPublisher: any QuickSitesPublishing = DefaultQuickSitesPublisher()
+  @State private var quickSitesPublishTask: Task<Void, Never>?
+  @State private var quickSitesPublishResult: QuickSitesPublishResult?
+  @State private var quickSitesPublishError: String?
   @State private var didHandleInitialPrompt = false
   @Environment(\.colorScheme) private var colorScheme
 
@@ -624,6 +629,19 @@ struct CanvasContentView: View {
 
       Spacer()
 
+      if chatService.currentProject?.kind == .prototype {
+        Button(action: publishCurrentProjectToQuickSites) {
+          Label("Publish to Quick Sites", systemImage: "paperplane")
+            .font(.system(size: 13, weight: .medium))
+            .labelStyle(.iconOnly)
+            .frame(width: 28, height: 28)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(quickSitesPublishButtonForeground)
+        .disabled(quickSitesPublishTask != nil || chatService.currentWorkingDirectory == nil)
+        .help(quickSitesPublishHelpText)
+      }
+
       Button(action: toggleCanvasFullWidth) {
         Label(canvasWidthButtonTitle, systemImage: canvasWidthButtonSystemImage)
           .font(.system(size: 13, weight: .medium))
@@ -642,6 +660,13 @@ struct CanvasContentView: View {
           .truncationMode(.middle)
           .help(currentWorkingDirectory)
       }
+    }
+    .alert("Quick Sites Publish Failed", isPresented: quickSitesPublishErrorBinding) {
+      Button("OK", role: .cancel) {
+        quickSitesPublishError = nil
+      }
+    } message: {
+      Text(quickSitesPublishError ?? "")
     }
     .padding(.leading, canvasToolbarLeadingPadding)
     .padding(.trailing, 16)
@@ -683,6 +708,67 @@ struct CanvasContentView: View {
     panelLayoutState.isCanvasFullWidth
       ? "arrow.down.right.and.arrow.up.left"
       : "arrow.up.left.and.arrow.down.right"
+  }
+
+  private var quickSitesPublishButtonForeground: Color {
+    if quickSitesPublishTask != nil {
+      return EaselDesignSystem.Palette.tertiaryText(for: colorScheme)
+    }
+    if quickSitesPublishResult?.status == "OK" {
+      return EaselDesignSystem.Palette.accentForeground(for: colorScheme)
+    }
+    return EaselDesignSystem.Palette.secondaryText(for: colorScheme)
+  }
+
+  private var quickSitesPublishHelpText: String {
+    if quickSitesPublishTask != nil {
+      return "Publishing to Quick Sites..."
+    }
+    if let result = quickSitesPublishResult {
+      return "Open \(result.serviceUrl.absoluteString)"
+    }
+    return "Publish this project to Quick Sites"
+  }
+
+  private var quickSitesPublishErrorBinding: Binding<Bool> {
+    Binding(
+      get: { quickSitesPublishError != nil },
+      set: { newValue in
+        if !newValue {
+          quickSitesPublishError = nil
+        }
+      }
+    )
+  }
+
+  private func publishCurrentProjectToQuickSites() {
+    guard quickSitesPublishTask == nil,
+          let currentWorkingDirectory = chatService.currentWorkingDirectory else {
+      return
+    }
+
+    if let result = quickSitesPublishResult {
+      NSWorkspace.shared.open(result.serviceUrl)
+      return
+    }
+
+    let site = DefaultQuickSitesPublisher.suggestedSiteSlug(for: currentWorkingDirectory)
+    quickSitesPublishTask = Task { @MainActor in
+      defer {
+        quickSitesPublishTask = nil
+      }
+
+      do {
+        let result = try await quickSitesPublisher.publish(
+          projectDirectory: currentWorkingDirectory,
+          site: site
+        )
+        quickSitesPublishResult = result
+        NSWorkspace.shared.open(result.serviceUrl)
+      } catch {
+        quickSitesPublishError = error.localizedDescription
+      }
+    }
   }
 
   private var isSlideDeckProject: Bool {

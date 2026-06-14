@@ -64,6 +64,22 @@ Download the latest signed, notarized DMG from the [**Releases**](https://github
 4. **Chat to build** — Describe the screen or component you want. Codex writes the files; Easel runs the server and shows a live preview.
 5. **Refine visually** — Press `Cmd+Shift+I`, click an element in the preview, and tell Easel what to change.
 
+### Kowal Quick Sites authoring lane
+
+This fork includes a local Quick Sites dogfood lane for prototype projects. Open a prototype in the canvas and use the paper-plane toolbar button to publish the current project folder through:
+
+```sh
+/Users/jk/bin/jk quick easel-publish <project-folder> --json
+```
+
+Successful publishes open the first-class tailnet URL at `https://quick.tail4fa75d.ts.net/sites/<site>/` and produce the same closeout evidence as the CLI lane: publish output, visual QA, closeout metadata, and proof-pack artifacts. The integration keeps Easel as the authoring surface while preserving the normal Quick Sites gates (`should-publish`, `preflight`, `publish`, visual QA, closeout, and proof pack).
+
+For local development, run the same app build used by Codex:
+
+```sh
+./script/build_and_run.sh --verify
+```
+
 ### Quick start: import a design system from getdesign.md
 
 The fastest way to start with a polished, on-brand look is to grab a ready-made design system from [getdesign.md](https://getdesign.md) and paste it into Easel.

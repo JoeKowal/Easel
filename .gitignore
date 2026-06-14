@@ -5,6 +5,7 @@ xcuserdata/
 # Build products
 build/
 DerivedData/
+artifacts/
 
 # macOS
 .DS_Store
