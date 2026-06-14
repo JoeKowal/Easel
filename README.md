@@ -66,13 +66,20 @@ Download the latest signed, notarized DMG from the [**Releases**](https://github
 
 ### Kowal Quick Sites authoring lane
 
-This fork includes a local Quick Sites dogfood lane for prototype projects. Open a prototype in the canvas and use the paper-plane toolbar button to publish the current project folder through:
+This fork includes a local Quick Sites dogfood lane for prototype projects. Open a prototype in the canvas and use the Quick Sites toolbar menu to publish the current project folder through:
 
 ```sh
-/Users/jk/bin/jk quick easel-publish <project-folder> --json
+/Users/jk/bin/jk quick easel-publish <project-folder> \
+  --tag easel --tag dogfood --tag playground \
+  --owner Codex \
+  --purpose "Easel-authored Quick Sites experiment" \
+  --audience "Joe and Codex operators" \
+  --sensitivity internal \
+  --status watch \
+  --json
 ```
 
-Successful publishes open the first-class tailnet URL at `https://quick.tail4fa75d.ts.net/sites/<site>/` and produce the same closeout evidence as the CLI lane: publish output, visual QA, closeout metadata, and proof-pack artifacts. The integration keeps Easel as the authoring surface while preserving the normal Quick Sites gates (`should-publish`, `preflight`, `publish`, visual QA, closeout, and proof pack).
+Successful publishes open the first-class tailnet URL at `https://quick.tail4fa75d.ts.net/sites/<site>/` and produce the same closeout evidence as the CLI lane: publish output, visual QA, closeout metadata, and proof-pack artifacts. The menu also exposes the service URL, proof pack, closeout folder, and copy URL actions after publish. The integration keeps Easel as the authoring surface while preserving the normal Quick Sites gates (`should-publish`, `preflight`, `publish`, visual QA, closeout, and proof pack).
 
 For local development, run the same app build used by Codex:
 

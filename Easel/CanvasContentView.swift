@@ -630,15 +630,51 @@ struct CanvasContentView: View {
       Spacer()
 
       if chatService.currentProject?.kind == .prototype {
-        Button(action: publishCurrentProjectToQuickSites) {
-          Label("Publish to Quick Sites", systemImage: "paperplane")
+        Menu {
+          Button(action: publishCurrentProjectToQuickSites) {
+            Label(quickSitesPublishResult == nil ? "Publish" : "Republish", systemImage: "paperplane")
+          }
+          .disabled(quickSitesPublishTask != nil || chatService.currentWorkingDirectory == nil)
+
+          if let result = quickSitesPublishResult {
+            Button {
+              NSWorkspace.shared.open(result.serviceUrl)
+            } label: {
+              Label("Open Service URL", systemImage: "safari")
+            }
+
+            if let proofPackURL = quickSitesProofPackURL {
+              Button {
+                NSWorkspace.shared.open(proofPackURL)
+              } label: {
+                Label("Open Proof Pack", systemImage: "doc.text.magnifyingglass")
+              }
+            }
+
+            if let closeoutURL = quickSitesCloseoutURL {
+              Button {
+                NSWorkspace.shared.open(closeoutURL)
+              } label: {
+                Label("Open Closeout", systemImage: "checklist")
+              }
+            }
+
+            Button {
+              NSPasteboard.general.clearContents()
+              NSPasteboard.general.setString(result.serviceUrl.absoluteString, forType: .string)
+            } label: {
+              Label("Copy Service URL", systemImage: "link")
+            }
+          }
+        } label: {
+          Label("Quick Sites", systemImage: quickSitesPublishTask == nil ? "paperplane" : "hourglass")
             .font(.system(size: 13, weight: .medium))
             .labelStyle(.iconOnly)
             .frame(width: 28, height: 28)
         }
+        .menuStyle(.button)
         .buttonStyle(.plain)
         .foregroundStyle(quickSitesPublishButtonForeground)
-        .disabled(quickSitesPublishTask != nil || chatService.currentWorkingDirectory == nil)
         .help(quickSitesPublishHelpText)
       }
 
@@ -741,6 +777,16 @@ struct CanvasContentView: View {
     )
   }
 
+  private var quickSitesProofPackURL: URL? {
+    guard let proofPack = quickSitesPublishResult?.proofPack else { return nil }
+    return URL(fileURLWithPath: proofPack)
+  }
+
+  private var quickSitesCloseoutURL: URL? {
+    guard let closeout = quickSitesPublishResult?.closeout?.closeout else { return nil }
+    return URL(fileURLWithPath: closeout)
+  }
+
   private func publishCurrentProjectToQuickSites() {
     guard quickSitesPublishTask == nil,
           let currentWorkingDirectory = chatService.currentWorkingDirectory else {
@@ -752,7 +798,13 @@ struct CanvasContentView: View {
       return
     }
 
+    let currentProject = chatService.currentProject
     let site = DefaultQuickSitesPublisher.suggestedSiteSlug(for: currentWorkingDirectory)
+    let metadata = DefaultQuickSitesPublisher.suggestedMetadata(
+      projectName: currentProject?.name ?? URL(fileURLWithPath: currentWorkingDirectory).lastPathComponent,
+      projectDirectory: currentWorkingDirectory,
+      projectKind: currentProject?.kind.rawValue ?? "prototype"
+    )
     quickSitesPublishTask = Task { @MainActor in
       defer {
         quickSitesPublishTask = nil
@@ -761,7 +813,8 @@ struct CanvasContentView: View {
       do {
         let result = try await quickSitesPublisher.publish(
           projectDirectory: currentWorkingDirectory,
-          site: site
+          site: site,
+          metadata: metadata
         )
         quickSitesPublishResult = result
         NSWorkspace.shared.open(result.serviceUrl)

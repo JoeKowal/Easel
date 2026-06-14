@@ -37,7 +37,11 @@ struct QuickSitesPublisherTests {
         "serviceUrl": "https://quick.tail4fa75d.ts.net/sites/quick-easel-demo/",
         "compatibilityUrl": "https://hetzner.tail4fa75d.ts.net/quick/sites/quick-easel-demo/",
         "output": "/tmp/evidence",
-        "proofPack": "/tmp/evidence/proof-pack.md"
+        "proofPack": "/tmp/evidence/proof-pack.md",
+        "closeout": {
+          "packet": "/tmp/evidence/closeout/packet.md",
+          "closeout": "/tmp/evidence/closeout/closeout.md"
+        }
       }
       """.utf8
     )
@@ -48,5 +52,22 @@ struct QuickSitesPublisherTests {
     #expect(result.site == "quick-easel-demo")
     #expect(result.serviceUrl.absoluteString == "https://quick.tail4fa75d.ts.net/sites/quick-easel-demo/")
     #expect(result.proofPack == "/tmp/evidence/proof-pack.md")
+    #expect(result.closeout?.closeout == "/tmp/evidence/closeout/closeout.md")
+  }
+
+  @Test
+  func suggestedMetadataUsesProjectContext() {
+    let metadata = DefaultQuickSitesPublisher.suggestedMetadata(
+      projectName: "Revenue Demo",
+      projectDirectory: "/Users/jk/Documents/Easel Projects/Revenue Demo",
+      projectKind: "prototype"
+    )
+
+    #expect(metadata.title == "Revenue Demo")
+    #expect(metadata.tags.contains("easel"))
+    #expect(metadata.tags.contains("prototype"))
+    #expect(metadata.sensitivity == "internal")
+    #expect(metadata.lifecycleStatus == "watch")
+    #expect(metadata.template == "easel-prototype")
   }
 }

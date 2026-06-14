@@ -6,7 +6,11 @@
 import Foundation
 
 protocol QuickSitesPublishing {
-  func publish(projectDirectory: String, site: String?) async throws -> QuickSitesPublishResult
+  func publish(
+    projectDirectory: String,
+    site: String?,
+    metadata: QuickSitesPublishMetadata
+  ) async throws -> QuickSitesPublishResult
 }
 
 struct QuickSitesPublishResult: Decodable, Equatable {
@@ -16,6 +20,7 @@ struct QuickSitesPublishResult: Decodable, Equatable {
   let compatibilityUrl: URL
   let output: String
   let proofPack: String?
+  let closeout: QuickSitesCloseoutResult?
 
   enum CodingKeys: String, CodingKey {
     case status
@@ -24,7 +29,26 @@ struct QuickSitesPublishResult: Decodable, Equatable {
     case compatibilityUrl
     case output
     case proofPack
+    case closeout
   }
+}
+
+struct QuickSitesCloseoutResult: Decodable, Equatable {
+  let packet: String?
+  let closeout: String?
+}
+
+struct QuickSitesPublishMetadata: Equatable {
+  var title: String
+  var description: String
+  var tags: [String]
+  var owner: String
+  var purpose: String
+  var audience: String
+  var sensitivity: String
+  var lifecycleStatus: String
+  var template: String
+  var shareNotes: String
 }
 
 enum QuickSitesPublisherError: LocalizedError, Equatable {
@@ -47,7 +71,11 @@ enum QuickSitesPublisherError: LocalizedError, Equatable {
 struct DefaultQuickSitesPublisher: QuickSitesPublishing {
   var jkPath = "/Users/jk/bin/jk"
 
-  func publish(projectDirectory: String, site: String? = nil) async throws -> QuickSitesPublishResult {
+  func publish(
+    projectDirectory: String,
+    site: String? = nil,
+    metadata: QuickSitesPublishMetadata
+  ) async throws -> QuickSitesPublishResult {
     guard FileManager.default.isExecutableFile(atPath: jkPath) else {
       throw QuickSitesPublisherError.jkNotFound(jkPath)
     }
@@ -55,6 +83,20 @@ struct DefaultQuickSitesPublisher: QuickSitesPublishing {
     var arguments = ["quick", "easel-publish", projectDirectory]
     if let site, !site.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
       arguments.append(site)
+    }
+    arguments.append(contentsOf: [
+      "--title", metadata.title,
+      "--description", metadata.description,
+      "--owner", metadata.owner,
+      "--purpose", metadata.purpose,
+      "--audience", metadata.audience,
+      "--sensitivity", metadata.sensitivity,
+      "--status", metadata.lifecycleStatus,
+      "--template", metadata.template,
+      "--share-notes", metadata.shareNotes,
+    ])
+    for tag in metadata.tags where !tag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      arguments.append(contentsOf: ["--tag", tag])
     }
     arguments.append("--json")
 
@@ -157,6 +199,26 @@ extension DefaultQuickSitesPublisher {
       return trimmed
     }
     return "quick-easel-\(trimmed.isEmpty ? "project" : trimmed)"
+  }
+
+  static func suggestedMetadata(
+    projectName: String,
+    projectDirectory: String,
+    projectKind: String
+  ) -> QuickSitesPublishMetadata {
+    let slug = suggestedSiteSlug(for: projectDirectory)
+    return QuickSitesPublishMetadata(
+      title: projectName.isEmpty ? URL(fileURLWithPath: projectDirectory).lastPathComponent : projectName,
+      description: "Dogfood import from an Easel-authored \(projectKind) project.",
+      tags: ["easel", "dogfood", "playground", projectKind],
+      owner: "Codex",
+      purpose: "Easel-authored Quick Sites experiment for rapid internal review and proof capture.",
+      audience: "Joe and Codex operators",
+      sensitivity: "internal",
+      lifecycleStatus: "watch",
+      template: "easel-\(projectKind)",
+      shareNotes: "Published from Easel through jk quick easel-publish as \(slug)."
+    )
   }
 }
 
